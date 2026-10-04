@@ -1,0 +1,294 @@
+{
+  "Barbarian":{
+    "hit_die": 12,
+    "sub_level": 3,
+    "subclasses": [
+      "Berserker",
+      "Wild Heart",
+      "Battlerager",
+      "Ancestral Guardian",
+      "Storm Herald",
+      "Zealot",
+      "Beast",
+      "Wild Magic",
+      "Giant",
+      "Juggernaut",
+      "World Tree",
+      "Experiment",
+      "Fractured",
+      "Muscle Wizard",
+      "Spell Scorned",
+      "Wrathful Dead"
+    ]
+  },
+  "Bard":{
+    "hit_die": 8,
+    "sub_level": 3,
+    "subclasses": [
+      "Lore",
+      "Valor",
+      "Glamour",
+      "Swords",
+      "Whispers",
+      "Eloquence",
+      "Creation",
+      "Tragedy",
+      "Dance",
+      "Moon",
+      "Adventurers",
+      "Drama",
+      "Fools",
+      "Requiems",
+      "Whistles"
+    ]
+  },
+  "Cleric":{
+    "hit_die": 8,
+    "sub_level": 3,
+    "subclasses": [
+      "Life",
+      "Knowledge",
+      "Light",
+      "Nature",
+      "Tempest",
+      "Trickery",
+      "War",
+      "Arcana",
+      "Death",
+      "Forge",
+      "Grave",
+      "Order",
+      "Twilight",
+      "Peace",
+      "Blood",
+      "Moon",
+      "Apocalypse",
+      "Eldritch",
+      "Harvest",
+      "Inquisition",
+      "Purification"
+    ]
+  },
+  "Druid":{
+    "hit_die": 8,
+    "sub_level": 3,
+    "subclasses": [
+      "Land",
+      "Moon",
+      "Dreams",
+      "Shepherd",
+      "Spores",
+      "Wildfire",
+      "Stars",
+      "Blighted",
+      "Sea",
+      "Blood",
+      "Entropy",
+      "Mutation",
+      "Old Ways",
+      "Symbiote",
+      "Wicker"
+    ]
+  },
+  "Fighter":{
+    "hit_die": 10,
+    "sub_level": 3,
+    "subclasses": [
+      "Champion",
+      "Battle Master",
+      "Eldritch Knight",
+      "Purple Dragon Knight",
+      "Arcane Archer",
+      "Cavalier",
+      "Samurai",
+      "Gunslinger",
+      "Echo Knight",
+      "Rune Knight",
+      "Psi Warrior",
+      "Barrow Guard",
+      "Bulwark Warrior",
+      "Dungeoneer",
+      "Hero",
+      "Living Crucible",
+      "Nightwatcher"
+    ]
+  },
+  "Monk":{
+    "hit_die": 8,
+    "sub_level": 3,
+    "subclasses": [
+      "Open Hand",
+      "Shadow",
+      "Elements",
+      "Long Death",
+      "Sun Soul",
+      "Drunken Master",
+      "Kensei",
+      "Cobalt Soul",
+      "Astral Self",
+      "Mercy",
+      "Ascendant Dragon",
+      "Street",
+      "Pestilent Haze",
+      "Leaden Crown",
+      "Regret",
+      "Pride",
+      "Cosmic Balance"
+    ]
+  },
+  "Paladin":{
+    "hit_die": 10,
+    "sub_level": 3,
+    "subclasses": [
+      "Devotion",
+      "Ancients",
+      "Vengeance",
+      "Crown",
+      "Oathbreaker",
+      "Conquest",
+      "Redemption",
+      "Glory",
+      "Open Sea",
+      "Watchers",
+      "Noble Genies",
+      "Castigation",
+      "Pestilence",
+      "Revelry",
+      "Slaughter",
+      "Guardian",
+      "Zeal"
+    ]
+  },
+  "Ranger":{
+    "hit_die": 10,
+    "sub_level": 3,
+    "subclasses": [
+      "Hunter",
+      "Beast Master",
+      "Gloom Stalker",
+      "Horizon Walker",
+      "Monster Slayer",
+      "Swarmkeeper",
+      "Fey Wanderer",
+      "Drakewarden",
+      "Winter Walker",
+      "Green Reaper",
+      "Grim Harbinger",
+      "Primordial Archer",
+      "Trail Warden",
+      "Vermin Lord"
+    ]
+  },
+  "Rogue":{
+    "hit_die": 8,
+    "sub_level": 3,
+    "subclasses": [
+      "Thief",
+      "Assassin",
+      "Arcane Trickster",
+      "Mastermind",
+      "Swashbuckler",
+      "Inquisitive",
+      "Scout",
+      "Soulknife",
+      "Phantom",
+      "Scion of the Three",
+      "Arachnoid Stalker",
+      "Highway Rider",
+      "Misfortune Bringer",
+      "Sanguine Thief",
+      "Shadow Stalker",
+      "Sinner"
+    ]
+  },
+  "Sorcerer":{
+    "hit_die": 6,
+    "sub_level": 3,
+    "subclasses": [
+      "Draconic",
+      "Wild Magic",
+      "Storm Sorcery",
+      "Divine Soul",
+      "Shadow Magic",
+      "Clockwork",
+      "Aberrant",
+      "Lunar",
+      "Runechild",
+      "Wretched Bloodline",
+      "Hungering Dark",
+      "Haunted",
+      "Crimson",
+      "Apocalypse",
+      "Spellfire"
+    ]
+  },
+  "Warlock":{
+    "hit_die": 8,
+    "sub_level": 3,
+    "subclasses": [
+      "Fiend",
+      "Archfey",
+      "Great Old One",
+      "Undying",
+      "Celestial",
+      "Hexblade",
+      "Genie",
+      "Fathomless",
+      "Undead",
+      "Coven",
+      "First Vampire",
+      "Parasite",
+      "Horned King",
+      "Great Fool",
+      "Future You",
+      "Exalted Assembly of the Feline Court"
+    ]
+  },
+  "Wizard":{
+    "hit_die": 6,
+    "sub_level": 3,
+    "subclasses": [
+      "Evoker",
+      "Abjurer",
+      "Conjuration",
+      "Diviner",
+      "Enchantment",
+      "Illusionist",
+      "Necromancy",
+      "Transmutation",
+      "Bladesinging",
+      "War Magic",
+      "Chronurgy Magic",
+      "Graviturgy Magic",
+      "Order of Scribes",
+      "Blood Magic",
+      "Sangromancer",
+      "Plague Doctor",
+      "Philosopher",
+      "Occultist",
+      "Daemonologist",
+      "Bibliomancer"
+    ]
+  },
+  "Artificer":{
+    "hit_die": 8,
+    "sub_level": 3,
+    "subclasses": [
+      "Alchemist",
+      "Armorer",
+      "Artillerist",
+      "Battle Smith",
+      "Cartographer"
+    ]
+  },
+  "Blood Hunter":{
+    "hit_die": 10,
+    "sub_level": 3,
+    "subclasses": [
+      "Ghostslayer",
+      "Lycan",
+      "Mutant",
+      "Profane Soul"
+    ]
+  }
+}

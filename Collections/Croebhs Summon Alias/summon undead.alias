@@ -1,0 +1,103 @@
+<drac2>
+TYPE = "Undead"
+SPELL_NAME = "Summon Undead"
+SPELL_DESC = "You call forth an undead spirit. It manifests in an unoccupied space that you can see within range. This corporeal form uses the Undead Spirit stat block. When you cast the spell, choose the creature's form: Ghostly, Putrid, or Skeletal. The spirit resembles an undead creature with the chosen form, which determines certain traits in its stat block. The creature disappears when it drops to 0 hit points or when the spell ends.\n\nThe creature is an ally to you and your companions. In combat, the creature shares your initiative count, but it takes its turn immediately after yours. It obeys your verbal commands (no action required by you). If you don't issue any, it takes the Dodge action and uses its move to avoid danger."
+MIN_LEVEL = 3
+
+using(init_add="f48672c2-8f25-4170-ba39-d5f6ffd38bd3")
+
+args = argparse(["-type"] + &ARGS&)
+c = combat()
+ch = character()
+sab = ch.spellbook.sab
+sdc = ch.spellbook.dc
+true, false, null = True, False, None
+
+warlock = ch.levels.get('Warlock')
+min_slot = max(MIN_LEVEL, ((warlock >= 9) + (warlock >= 7) + (warlock >= 5) + (warlock >= 3) + 1))
+
+if not (c and c.me):
+  return f"""embed -title "Woopsie!" -desc "You're not in initiative!" """
+
+open_b, close_b = "<"+"drac2"+">", "</"+"drac2"+">"
+pf = ctx.prefix
+
+spell_level = args.last('l', min_slot, int)
+summon_type = args.last('type', "", str).lower()
+ignore  = args.last('i')
+
+stat_block = {
+  "hp": 10 * spell_level,
+  "ac": 11 + spell_level,
+  "pb": proficiencyBonus,
+  "strength": 12,
+  "dexterity": 16,
+  "constitution": 15,
+  "intelligence": 4,
+  "wisdom": 10,
+  "charisma": 9,
+  "immune": ["necrotic", "poison"],
+  "type": "undead",
+}
+
+attacks = []
+extra_effects = []
+match summon_type:
+  case "ghostly" | "ghost":
+    attacks = [{"name":"Deathly Touch","automation":[{"type":"target","target":"each","effects":[{"type":"attack","attackBonus":sab,"hit":[{"type":"damage","damage":f"1d8 + 3 + {spell_level} [necrotic]"},{"type":"ieffect2","name":"Frightened","duration":1,"end":True,"desc":"Frightened of {{caster.name}}"}],"miss":[],"adv":"0"}],"sortBy":None},{"type":"text","text":"*Melee Attack Roll*: Bonus equals your spell attack modifier, reach 5 ft. *Hit*: 1d8 + 3 + the spell’s level Necrotic damage, and the target has the Frightened condition until the end of its next turn."}],"_v":2,"verb":None,"proper":False,"activation_type":None}]
+    summon_name = "Ghostly"
+  case "putrid":
+    attacks = [{"name":"Rotting Claw","automation":[{"type":"target","target":"each","effects":[{"type":"attack","attackBonus":sab,"hit":[{"type":"damage","damage":f"1d6 + 3 + {spell_level} [slashing]"}],"miss":[],"adv":"0"}]},{"type":"text","text":"*Melee Weapon Attack:* your spell attack modifier to hit, reach 5 ft., one target. *Hit:* 1d6 + 3 + the spell's level slashing damage. If the target is poisoned, it has the paralysed condition until the end of its next turn."}],"_v":2,"verb":None,"proper":False,"activation_type":None},{"name":"Paralyzing Claw","automation":[{"type":"target","target":"each","effects":[{"type":"attack","attackBonus":sab,"hit":[{"type":"damage","damage":f"1d6 + 3 + {spell_level} [slashing]"},{"type":"ieffect2","name":"Paralyzed","duration":1,"end":True}],"miss":[],"adv":"0"}]},{"type":"text","text":"*Melee Weapon Attack:* your spell attack modifier to hit, reach 5 ft., one target. *Hit:* 1d6 + 3 + the spell's level slashing damage. If the target has the poisoned condition, it has the paralyzed condition until the end of its next turn."}],"_v":2,"verb":"has","proper":False,"activation_type":8}]
+    extra_effects = [{"name":"Festering Aura","desc":"A creature that starts its turn within 5 feet of {{caster.name}} must make a Constitution save or be poisoned","attacks":[{"attack":{"name":"Spread Festering Aura","automation":[{"type":"target","target":"each","effects":[{"type":"ieffect2","name":"In the Festering Aura","duration":"10","desc":"A creature that starts its turn within 5 feet of {{caster.name}} must make a Constitution save or be poisoned","parent":"ieffect","buttons":[{"label":"Festering Aura (Start of Turn)","verb":"is inside the Festering Aura","style":"4","defaultDC":sdc,"automation":[{"type":"target","target":"self","effects":[{"type":"ieffect2","name":"In the Festering Aura","duration":1,"desc":"A creature that starts its turn within 5 feet of {{caster.name}} must make a Constitution save or be poisoned","buttons":[{"label":"Leave the Festering Aura","verb":"leaves the range of the Festering Aura","style":"3","automation":[{"type":"remove_ieffect"}]},{"label":"Festering Aura Poison","verb":"risks being poisoned by the Festering Aura","style":"4","automation":[{"type":"target","target":"self","effects":[{"type":"save","stat":"con","dc":sdc,"fail":[{"type":"ieffect2","name":"Poisoned","duration":1,"effects":{"attack_advantage":-1,"check_dis":["all"]}}],"success":[],"adv":0}]},{"type":"text","text":"Any creature, other than you, that starts its turn within 5 feet of the spirit must succeed on a Constitution saving throw against your spell save DC or be poisoned until the start of its next turn."}]}],"end":True,"parent":"ieffect"}]},{"type":"text","text":"Any creature, other than you, that starts its turn within 5 feet of the spirit must succeed on a Constitution saving throw against your spell save DC or be poisoned until the start of its next turn."}]},{"label":"Leave Festering Aura","verb":"leaves the range of the Festering Aura","style":"3","automation":[{"type":"remove_ieffect"}]}]}]},{"type":"text","text":"Any creature, other than you, that starts its turn within 5 feet of the spirit must succeed on a Constitution saving throw against your spell save DC or be poisoned until the start of its next turn."}],"_v":2}}]}]
+    summon_name = "Putrid"
+  case "skeleton" | "skeletal" | "bone":
+    attacks = [{"name":"Grave Bolt","automation":[{"type":"target","target":"each","effects":[{"type":"attack","attackBonus":sab,"hit":[{"type":"damage","damage":f"2d4 + 3 + {spell_level} [necrotic]"}],"miss":[],"adv":"0"}],"sortBy":None},{"type":"text","text":"*Ranged Spell Attack:* your spell attack modifier to hit, range 150 ft., one target. *Hit:* 2d4 + 3 + the spell's level necrotic damage."}],"_v":2,"verb":None,"proper":False,"activation_type":None}]
+    summon_name = "Skeletal"
+    stat_block['hp'] -= 10
+  case _:
+    return f"""embed -title "Woopsie!" -desc "You didn't select a type!\n\nSelect from Ghostly, Putrid, or Skeletal." """
+
+if not ignore:
+  if not ch.spellbook.get_slots(spell_level):
+    return f"""embed -title "Woopsie!" -desc "You don't have any slots left!" -f "Spell Slots|{ch.spellbook.slots_str(spell_level)}" """
+  if not ch.spellbook.can_cast(SPELL_NAME, spell_level):
+    return f"""embed -title "Woopsie!" -desc "You don't have that spell prepared!" """
+  ch.spellbook.use_slot(spell_level)
+
+custom_names = load_yaml(get('summon_names', '{}'))
+s_name = args.last('name')
+if s_name == 'reset':
+  custom_names.pop(summon_name, None)
+elif s_name:
+  custom_names[summon_name] = s_name
+ch.set_cvar('summon_names', dump_yaml(custom_names))
+s_name = custom_names.get(summon_name, f"Summoned {summon_name} {TYPE} ({init_add.get_initials(name)})")
+
+group_name = args.last('group', combat().me.group or f"{init_add.get_initials(name)}'s Summons")
+
+stat_block['p'] = True
+stat_block['group'] = group_name
+stat_block['note'] = f"Summoned by {name}\nMultiattack: {max(1, spell_level//2)}"
+
+c.me.set_group(group_name)
+useconc = "noconc" not in args
+usedur = int(args.get("dur",[600])[0])
+c.me.add_effect(f"Summon {TYPE}", concentration=useconc, duration=usedur)
+
+embed_args = {
+  "title": f"{name} summoned a {summon_name} {TYPE}!",
+  "desc": SPELL_DESC,
+  "fields": [{"title": "Spell Slots", "desc": f"{ch.spellbook.slots_str(spell_level)} {'(-1)' if not ignore else ''}"}],
+  "footer": f"{ctx.prefix+ctx.alias} | Made by Croebh",
+  "color": color,
+  "thumb": image
+}
+
+summon_command = init_add.build_init_add(s_name, c.me.init, stat_block)
+embed = init_add.build_tembed(**embed_args, init_name=s_name, attacks=attacks, effect_name=f"Summon {TYPE}", extra_effects=extra_effects)
+
+return f"""multiline
+{summon_command}
+{embed}
+"""
+</drac2>

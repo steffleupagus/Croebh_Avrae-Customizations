@@ -1,0 +1,103 @@
+<drac2>
+TYPE = "Fiend"
+SPELL_NAME = "Summon Fiend"
+SPELL_DESC = "You call forth a fiendish spirit. It manifests in an unoccupied space that you can see within range. This corporeal form uses the Fiendish Spirit stat block. When you cast the spell, choose Demon, Devil, or Yugoloth. The creature resembles a fiend of the chosen type, which determines certain traits in its stat block. The creature disappears when it drops to 0 hit points or when the spell ends.\n\nThe creature is an ally to you and your companions. In combat, the creature shares your initiative count, but it takes its turn immediately after yours. It obeys your verbal commands (no action required by you). If you don't issue any, it takes the Dodge action and uses its move to avoid danger."
+MIN_LEVEL = 6
+
+using(init_add="f48672c2-8f25-4170-ba39-d5f6ffd38bd3")
+
+args = argparse(["-type"] + &ARGS&)
+c = combat()
+ch = character()
+sab = ch.spellbook.sab
+sdc = ch.spellbook.dc
+true, false, null = True, False, None
+
+warlock = ch.levels.get('Warlock')
+min_slot = max(MIN_LEVEL, ((warlock >= 9) + (warlock >= 7) + (warlock >= 5) + (warlock >= 3) + 1))
+
+if not (c and c.me):
+  return f"""embed -title "Woopsie!" -desc "You're not in initiative!" """
+
+spell_level = args.last('l', min_slot, int)
+summon_type = args.last('type', "", str).lower()
+ignore  = args.last('i')
+
+stat_block = {
+  "hp": 15 * spell_level,
+  "ac": 12 + spell_level,
+  "pb": proficiencyBonus,
+  "strength": 13,
+  "dexterity": 16,
+  "constitution": 15,
+  "intelligence": 10,
+  "wisdom": 10,
+  "charisma": 16,
+  "type": "fiend",
+  "immune": "poison",
+  "resist": "fire"
+}
+
+attacks = []
+extra_effects = [{"name": "Magic Resistance", "desc": "The fiend has advantage on saving throws against spells and other magical effects."}]
+match summon_type:
+  case "demon":
+    summon_name = "Demon"
+    stat_block['hp'] -= 40
+    attacks = [{"name":"Bite","automation":[{"type":"target","target":"each","effects":[{"type":"attack","attackBonus":sab,"hit":[{"type":"damage","damage":f"1d12 + 3 + {spell_level} [necrotic]"}],"miss":[]}]},{"type":"text","text":"*Melee Weapon Attack:* your spell attack modifier to hit, reach 5 ft., one target. *Hit:* 1d12 + 3 + the spell's level necrotic damage."}],"_v":2},{"name":"Death Throes","automation":[{"type":"roll","dice":f"2d10 + {spell_level} [fire]","name":"damage"},{"type":"target","target":"each","effects":[{"type":"save","stat":"dex","dc":sdc,"fail":[{"type":"damage","damage":"{damage}"}],"success":[{"type":"damage","damage":"({damage}) / 2"}]}],"meta":[]},{"type":"text","text":"When the fiend drops to 0 hit points or the spell ends, the fiend explodes, and each creature within 10 feet of it must make a Dexterity saving throw against your spell save DC. A creature takes 2d10 + this spell's level fire damage on a failed save, or half as much damage on a successful one."}],"_v":2,"verb":"explodes in their","proper":True,"activation_type":8}]
+  case "devil":
+    summon_name = "Devil"
+    stat_block['hp'] -= 50
+    attacks = [{"name":"Hurl Flame","automation":[{"type":"target","target":"each","effects":[{"type":"attack","attackBonus":sab,"hit":[{"type":"damage","damage":f"2d6 + 3 + {spell_level} [fire]"}],"miss":[],"adv":"0"}]},{"type":"text","text":"*Ranged Spell Attack:* your spell attack modifier to hit, range 150 ft., one target. *Hit:* 2d6 + 3 + the spell's level fire damage. If the target is a flammable object that isn't being worn or carried, it also catches fire."}],"_v":2}]
+    extra_effects.extend([{"name":"Devil's Sight","desc":"Magical darkness doesn’t impede the fiend’s darkvision."}])
+  case "yugoloth" | "yugo" | "loth":
+    stat_block['hp'] -= 30
+    summon_name = "Yugoloth"
+    attacks = [{"name":"Claws","automation":[{"type":"target","target":"each","effects":[{"type":"attack","attackBonus":sab,"hit":[{"type":"damage","damage":f"1d8 + 3 + {spell_level} [slashing]"}],"miss":[],"adv":"0"}]},{"type":"text","text":"*Melee Weapon Attack:* your spell attack modifier to hit, reach 5 ft., one target. *Hit:* 1d8 + 3 + the spell's level slashing damage. Immediately after the attack hits or misses, the fiend can magically teleport up to 30 feet to an unoccupied space it can see."}],"_v":2,"proper":True}]
+  case _:
+    return f"""embed -title "Woopsie!" -desc "You didn't select a type!\n\nSelect from Demon, Devil, or Yugoloth" """
+
+if not ignore:
+  if not ch.spellbook.get_slots(spell_level):
+    return f"""embed -title "Woopsie!" -desc "You don't have any slots left!" -f "Spell Slots|{ch.spellbook.slots_str(spell_level)}" """
+  if not ch.spellbook.can_cast(SPELL_NAME, spell_level):
+    return f"""embed -title "Woopsie!" -desc "You don't have that spell prepared!" """
+  ch.spellbook.use_slot(spell_level)
+
+custom_names = load_yaml(get('summon_names', '{}'))
+s_name = args.last('name')
+if s_name == 'reset':
+  custom_names.pop(summon_name, None)
+elif s_name:
+  custom_names[summon_name] = s_name
+ch.set_cvar('summon_names', dump_yaml(custom_names))
+s_name = custom_names.get(summon_name, f"Summoned {summon_name} {TYPE} ({init_add.get_initials(name)})")
+
+group_name = args.last('group', combat().me.group or f"{init_add.get_initials(name)}'s Summons")
+
+stat_block['p'] = True
+stat_block['group'] = group_name
+stat_block['note'] = f"Summoned by {name}\nMultiattack: {max(1, spell_level//2)}"
+
+c.me.set_group(group_name)
+useconc = "noconc" not in args
+usedur = int(args.get("dur",[600])[0])
+c.me.add_effect(f"Summon {TYPE}", concentration=useconc, duration=usedur)
+
+embed_args = {
+  "title": f"{name} summoned a {summon_name} {TYPE}!",
+  "desc": SPELL_DESC,
+  "fields": [{"title": "Spell Slots", "desc": f"{ch.spellbook.slots_str(spell_level)} {'(-1)' if not ignore else ''}"}],
+  "footer": f"{ctx.prefix+ctx.alias} | Made by Croebh",
+  "color": color,
+  "thumb": image
+}
+
+summon_command = init_add.build_init_add(s_name, c.me.init, stat_block)
+embed = init_add.build_tembed(**embed_args, init_name=s_name, attacks=attacks, effect_name=f"Summon {TYPE}", extra_effects=extra_effects)
+
+return f"""multiline
+{summon_command}
+{embed}
+"""
+</drac2>

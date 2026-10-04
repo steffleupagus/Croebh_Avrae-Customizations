@@ -1,0 +1,91 @@
+<drac2>
+TYPE = ""
+SPELL_NAME = ""
+SPELL_DESC = ""
+MIN_LEVEL = 5
+
+using(init_add="f48672c2-8f25-4170-ba39-d5f6ffd38bd3")
+
+args = argparse(["-type"] + &ARGS&)
+c = combat()
+ch = character()
+sab = ch.spellbook.sab
+sdc = ch.spellbook.dc
+true, false, null = True, False, None
+
+warlock = ch.levels.get('Warlock')
+min_slot = max(MIN_LEVEL, ((warlock >= 9) + (warlock >= 7) + (warlock >= 5) + (warlock >= 3) + 1))
+
+if not (c and c.me):
+  return f"""embed -title "Woopsie!" -desc "You're not in initiative!" """
+
+spell_level = args.last('l', min_slot, int)
+summon_type = args.last('type', "", str).lower()
+ignore  = args.last('i')
+
+if not ignore:
+  if not ch.spellbook.get_slots(spell_level):
+    return f"""embed -title "Woopsie!" -desc "You don't have any slots left!" -f "Spell Slots|{ch.spellbook.slots_str(spell_level)}" """
+  if not ch.spellbook.can_cast(SPELL_NAME, spell_level):
+    return f"""embed -title "Woopsie!" -desc "You don't have that spell prepared!" """
+  ch.spellbook.use_slot(spell_level)
+
+stat_block = {
+  "hp":           (10 * spell_level) - 10,
+  "ac":           11 + spell_level,
+  "pb":           proficiencyBonus,
+  "strength":     16,
+  "dexterity":    14,
+  "constitution": 16,
+  "intelligence": 10,
+  "wisdom":       14,
+  "charisma":     16,
+  "type":         "celestial",
+  "resist":       "radiant"
+}
+
+attacks = []
+extra_effects = []
+match summon_type:
+  case "avenger" | "avenge":
+    summon_name = "Avenger"
+    attacks.extend([])
+    extra_effects.extend([])
+  case _:
+    return f"""embed -title "Woopsie!" -desc "You didn't select a type!\n\nChoose from Avenger." """
+
+custom_names = load_yaml(get('summon_names', '{}'))
+s_name = args.last('name')
+if s_name == 'reset':
+  custom_names.pop(summon_name, None)
+elif s_name:
+  custom_names[summon_name] = s_name
+ch.set_cvar('summon_names', dump_yaml(custom_names))
+s_name = custom_names.get(summon_name, f"Summoned {summon_name} {TYPE} ({init_add.get_initials(name)})")
+
+group_name = args.last('group', combat().me.group or f"{init_add.get_initials(name)}'s Summons")
+
+stat_block['p'] = True
+stat_block['group'] = group_name
+stat_block['note'] = f"Summoned by {name}\nMultiattack: {max(1, spell_level//2)}"
+
+c.me.set_group(group_name)
+c.me.add_effect(f"Summon {TYPE}", concentration=True, duration=600)
+
+embed_args = {
+  "title": f"{name} summoned a {summon_name} {TYPE}!",
+  "desc": SPELL_DESC,
+  "fields": [{"title": "Spell Slots", "desc": f"{ch.spellbook.slots_str(spell_level)} {'(-1)' if not ignore else ''}"}],
+  "footer": f"{ctx.prefix+ctx.alias} | Made by Croebh",
+  "color": color,
+  "thumb": image
+}
+
+summon_command = init_add.build_init_add(s_name, c.me.init, stat_block)
+embed = init_add.build_tembed(**embed_args, init_name=s_name, attacks=attacks, effect_name=f"Summon {TYPE}", extra_effects=extra_effects)
+
+return f"""multiline
+{summon_command}
+{embed}
+"""
+</drac2>

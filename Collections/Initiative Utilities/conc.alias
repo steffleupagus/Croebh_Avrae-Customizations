@@ -9,53 +9,88 @@ self = target == name
 warcaster = 'warcaster' in get('feats', '').lower().replace(' ', '') and self
 mind = 'eldritch mind' in get('invocations', '').lower() and self
 if warcaster or mind:
-    args['adv'] = True
+  args['adv'] = True
 effect = None
 
 dc = args.last('dc', 10, int)
+
+v2014 = character().csettings['version']=='2014' if ctx.guild.servsettings()['allow_character_override'] else ctx.guild.servsettings()['version']=='2014'
+
+if not v2014:
+  dc = min(dc, 30)
+  rule = "If you take damage, you must succeed on a Constitution saving throw to maintain Concentration. The DC equals 10 or half the damage taken (round down), whichever number is higher, up to a maximum DC of 30."
+else:
+  rule = "Whenever you take damage while you are concentrating on a spell, you must make a Constitution saving throw to maintain your concentration. The DC equals 10 or half the damage you take, whichever number is higher. If you take damage from multiple sources, such as an arrow and a dragon's breath, you make a separate saving throw for each source of damage."
+
 b = args.join("b", ' + ')
 adv = args.adv(boolwise=True)
-bladesong = args.last('bs') if self else None
-transmuter = args.last('ts') if self else None
+bladesong = args.last('bs') if self else None   # Wizard (Bladesinger Bladesong) [+ intelligence mod]
+transmuter = args.last('ts') if self else None  # Wizard (Transmutation: Transmuter's Stone) [+ proficiency]
+dragon = args.last('dragon') if self else None  # Druid (Starry Form: Dragon) [Minimum 10]
+reroll = args.last('reroll', character().csettings.get('reroll') if self else None, type_=int)
+minimum_check = args.last('mc', None, int)
+if dragon:
+  minimum_check = max(minimum_check or 0, 10)
+rr = args.last('rr', 1, int)
 
 if c and (target := c.get_combatant(target)):
- effect     = ([eff for eff in target.effects if eff.conc] + [None])[0]
- bladesong  = bladesong or target.get_effect("Bladesong")
- transmuter = transmuter or target.get_effect("Transmuter's Stone")
- sb         = ' + '.join([sb_ for eff in target.effects if (sb_ := eff.effect.get('sb', eff.effect.get('save_bonus')))])
- rollString = f"{target.saves.get('constitution').d20(adv)}" +  \
-             (f' + {b}' if b else '') +  \
-             (f' + {sb}' if sb else '') + \
-             (f' + {max(1, (target.stats.get_mod("int")))} [bladesong]' if bladesong else '') + \
-             (f' + {(target.stats.prof_bonus)} [transmuter stone]' if transmuter else '')
- concRoll   = vroll(rollString)
- success    = concRoll.total >= dc
- concOut    = f"""-title "{target.name} makes a Concentration Save!"
- -desc "**DC {dc}**
- {concRoll}; {["Failure! Concentration Dropped", "Success!"][success]}" """
- if not success:
-  if effect:
-   concOut   = concOut[:-2] + f"""\nYou are no longer concentrating on {effect.name} and the effects have been removed." """
-   if "Mind Sharpener" in get("infusions","") and self:
-    character().set_cvar("lastEffect", dump_json([target.get_effect(effect.name).name, target.get_effect(effect.name).remaining]))
-    concOut   = concOut + f"""-f "Mind Sharpener|Effect stored for Mind Sharpener Infusion." """
-   target.remove_effect(effect.name)
-  else:
-   concOut   = concOut[:-2] + f"""\nYou weren't concentrating on a spell in init." """
+  name = target.name
+  effect     = ([eff for eff in target.effects if eff.conc] + [None])[0]
+  bladesong  = bladesong or target.get_effect("Bladesong")
+  transmuter = transmuter or target.get_effect("Transmuter's Stone")
+  dragon = dragon or ((eff :=target.get_effect("Starry Form")) and eff.desc.startswith("Constellation: Dragon"))
+  if dragon:
+    minimum_check = max(minimum_check or 0, 10)
+  sb         = ' + '.join([sb_ for eff in target.effects if (sb_ := eff.effect.get('sb', eff.effect.get('save_bonus')))])
+  rollString = f"{target.saves.get('constitution').d20(adv, reroll, minimum_check)}" +  \
+              (f' + {b}' if b else '') +  \
+              (f' + {sb}' if sb else '') + \
+              (f' + {max(1, (target.stats.get_mod("int")))} [bladesong]' if bladesong else '') + \
+              (f' + {(target.stats.prof_bonus)} [transmuter stone]' if transmuter else '')
 elif target == name:
- target = character()
- rollString = f"{target.saves.get('constitution').d20(adv)}" +  \
-             (f' + {b}' if b else '') + \
-             (f' + {max(1, (target.stats.constitution-10)//2)} [bladesong]' if bladesong else '')
- concRoll   = vroll(rollString)
- success    = concRoll.total >= dc
- concOut    = f"""-title "{name} makes a Concentration Save!"
- -desc "**DC {dc}**
- {concRoll}; {["failure!", "success!"][success]}" """
+  target = character()
+  rollString = f"{target.saves.get('constitution').d20(adv, reroll, minimum_check)}" +  \
+              (f' + {b}' if b else '') + \
+              (f' + {max(1, (target.stats.constitution-10)//2)} [bladesong]' if bladesong else '')
 else:
- concOut = f"""-title "{ctx.author.name} had a brain fart."
- -desc "**Invalid target.**
- Either join initiative with `{ctx.prefix}init join`, or select a valid target with `-t <name>`." """
+  concOut = f"""-title "{ctx.author.name} had a brain fart."
+  -desc "**Invalid target.**
+  Either join initiative with `{ctx.prefix}init join`, or select a valid target with `-t <name>`." """
+  return concOut
+
+
+
+
+concOut    = f"""-title "{name} makes a Concentration Save!"
+  -desc "{rule}\n\n**DC {dc}**" """
+failed = False
+for index in range(rr):
+  concRoll   = vroll(rollString)
+  success    = concRoll.total >= dc
+  if not success:
+    failed = True
+  if rr == 1:
+    concOut = concOut[:-2] + f"""\n{concRoll}; {["Failure! Concentration Dropped", "Success!"][success]}" """
+  else:
+    concOut += f""" -f "Save {index+1}|{concRoll}; {["Failure! Concentration Dropped", "Success!"][success]}|inline" """
+
+if failed:
+  if effect:
+    concOut += f""" -f "Concentration Dropped|You are no longer concentrating on {effect.name} and the effects have been removed." """
+    if "Mind Sharpener" in get("infusions","") and self:
+      character().set_cvar("lastEffect", dump_json([target.get_effect(effect.name).name, target.get_effect(effect.name).remaining]))
+      concOut += f""" -f "Mind Sharpener|Effect stored for Mind Sharpener Infusion." """
+    target.remove_effect(effect.name)
+  else:
+    concOut += """ -f "No Concentration|You weren't concentrating on a spell in init." """
+
+if bladesong:
+  concOut += f""" -f "Bladesong|You gain a bonus to any Constitution saving throw you make to maintain your concentration on a spell. The bonus equals your Intelligence modifier (minimum of +1)." """
+if transmuter:
+  concOut += f""" -f "Transmuter's Stone|Proficiency in Constitution saving throws" """
+if dragon:
+  concOut += f""" -f "Starry Form: Dragon|A constellation of a wise dragon appears on you. When you make an Intelligence or a Wisdom check or a Constitution saving throw to maintain concentration on a spell, you can treat a roll of 9 or lower on the d20 as a 10." """
+
 return concOut
 </drac2>
 

@@ -1,0 +1,90 @@
+<drac2>
+TYPE = "Spirit of Death"
+SPELL_NAME = "Spirit of Death"
+SPELL_DESC = "You call forth a spirit that embodies death. The spirit manifests in an unoccupied space you can see within range and uses the reaper spirit stat block. The spirit disappears when it is reduced to 0 hit points or when the spell ends.\n\nThe spirit is an ally to you and your companions. In combat, the spirit shares your initiative count and takes its turn immediately after yours. It obeys your verbal commands (no action required by you). If you don't issue the spirit any commands, it takes the Dodge action and uses its movement to avoid danger."
+MIN_LEVEL = 4
+
+using(init_add="f48672c2-8f25-4170-ba39-d5f6ffd38bd3")
+
+args = argparse(["-type"] + &ARGS&)
+c = combat()
+ch = character()
+sab = ch.spellbook.sab
+sdc = ch.spellbook.dc
+true, false, null = True, False, None
+
+warlock = ch.levels.get('Warlock')
+min_slot = max(MIN_LEVEL, ((warlock >= 9) + (warlock >= 7) + (warlock >= 5) + (warlock >= 3) + 1))
+
+if not (c and c.me):
+  return f"""embed -title "Woopsie!" -desc "You're not in initiative!" """
+
+spell_level = args.last('l', min_slot, int)
+summon_type = args.last('type', "", str).lower()
+ignore  = args.last('i')
+
+if not ignore:
+  if not ch.spellbook.get_slots(spell_level):
+    return f"""embed -title "Woopsie!" -desc "You don't have any slots left!" -f "Spell Slots|{ch.spellbook.slots_str(spell_level)}" """
+  if not ch.spellbook.can_cast(SPELL_NAME, spell_level):
+    return f"""embed -title "Woopsie!" -desc "You don't have that spell prepared!" """
+  ch.spellbook.use_slot(spell_level)
+
+stat_block = {
+  "hp": 10 * spell_level,
+  "ac": 11 + spell_level,
+  "pb": proficiencyBonus,
+  "strength": 16,
+  "dexterity": 16,
+  "constitution": 15,
+  "intelligence": 16,
+  "wisdom": 16,
+  "charisma": 16,
+  "type": "undead",
+  "immune": ["poison", "necrotic"],
+  "resist": "fire"
+}
+
+attacks = [{"name":"Reaping Scythe","automation":[{"type":"target","target":"each","effects":[{"type":"attack","attackBonus":sab,"hit":[{"type":"damage","damage":f"1d8 + 3 + {spell_level} [necrotic]"}],"miss":[],"adv":"1"}]},{"type":"text","text":"*Melee Weapon Attack:* your spell attack modifier to hit (with advantage), reach 5 ft., the creature haunted by Haunt Creature. *Hit:* 1d8 + 3 + the spell's level necrotic damage."}],"_v":2},{"name":"Haunt Creature","automation":[{"type":"target","target":"each","effects":[{"type":"ieffect2","name":"Haunting Creature","desc":"Haunting {{target.name}}","save_as":"haunt","target_self":True},{"type":"ieffect2","name":"Haunted","desc":"Being haunted by {{caster.name}}\n - If starting turn within 10ft of the spirit, must make a Wisdom save to avoid being frightened","buttons":[{"label":"Close to Spirit","verb":"is being haunted","style":"1","automation":[{"type":"target","target":"self","effects":[{"type":"save","stat":"wis","dc":sdc,"fail":[{"type":"ieffect2","name":"Frightened","duration":1,"desc":"Frightened of {{parent.combatant_name}}"}],"success":[]}]},{"type":"text","text":"The spirit targets a creature it can see within 10 feet of itself and begins haunting it. While the target is haunted, you and the spirit sense the direction and distance to the target if it is on the same plane of existence as you. Additionally, if the target starts its turn within 10 feet of the spirit, the target must succeed on a Wisdom saving throw against your spell save DC or have the frightened condition until the start of the target's next turn. The target remains haunted until it dies, the spirit disappears, or the spirit uses this action again."}]}],"parent":"haunt"}]},{"type":"text","text":"The spirit targets a creature it can see within 10 feet of itself and begins haunting it. While the target is haunted, you and the spirit sense the direction and distance to the target if it is on the same plane of existence as you. Additionally, if the target starts its turn within 10 feet of the spirit, the target must succeed on a Wisdom saving throw against your spell save DC or have the frightened condition until the start of the target's next turn. The target remains haunted until it dies, the spirit disappears, or the spirit uses this action again."}],"_v":2,"verb":"begins to","proper":True,"activation_type":3}]
+extra_effects = []
+summon_name = "Spirit of Death"
+
+custom_names = load_yaml(get('summon_names', '{}'))
+s_name = args.last('name')
+if s_name == 'reset':
+  custom_names.pop(summon_name, None)
+elif s_name:
+  custom_names[summon_name] = s_name
+ch.set_cvar('summon_names', dump_yaml(custom_names))
+s_name = custom_names.get(summon_name, f"{s_name or ''} {TYPE} ({init_add.get_initials(name)})")
+
+group_name = args.last('group', combat().me.group or f"{init_add.get_initials(name)}'s Summons")
+
+stat_block['p'] = True
+stat_block['group'] = group_name
+stat_block['note'] = f"Summoned by {name}\nMultiattack: {max(1, spell_level//2)}"
+
+c.me.set_group(group_name)
+useconc = "noconc" not in args
+usedur = int(args.get("dur",[600])[0])
+c.me.add_effect(f"Summon {TYPE}", concentration=useconc, duration=usedur)
+
+embed_args = {
+  "title": f"{name} summoned a {summon_name}!",
+  "desc": SPELL_DESC,
+  "fields": [{"title": "Spell Slots", "desc": f"{ch.spellbook.slots_str(spell_level)} {'(-1)' if not ignore else ''}"}],
+  "footer": f"{ctx.prefix+ctx.alias} | Made by Croebh",
+  "color": color,
+  "thumb": image
+}
+
+summon_command = init_add.build_init_add(s_name, c.me.init, stat_block)
+embed = init_add.build_tembed(**embed_args, init_name=s_name, attacks=attacks, effect_name=f"Summon {TYPE}", extra_effects=extra_effects)
+
+return f"""multiline
+{summon_command}
+{embed}
+"""
+</drac2>
+
+

@@ -3,7 +3,7 @@ embed
 testVersion = False
 argList = &ARGS&
 
-args = argparse(['-spell'] + argList if argList else [])
+args = argparse(['-spell'] + argList if argList else [], parse_ephem=False)
 # args = argparse(argList)
 
 
@@ -24,7 +24,7 @@ mapview = ""
 mapviewsize = ""
 mapviewlocation = ""
 mapattach = ""
-map="http://otfbm.io/"
+map=get("otfbm_base_url", "http://otfbm.io/")
 walls = []
 objects = []
 targ=None
@@ -468,6 +468,7 @@ if c:
   if len(tColor) in (3, 6):
    tColor = f"~{tColor}".upper()
   tName = target.translate(str.maketrans(' ', '_', nameStrip))
+  tName = tName.splitlines()[0]
   # Only display if they have a location
   if tLocation:
     people.append(f"{tLocation}{tSize}{tColor}-{tName}{f'~{tToken}' if tToken else ''}")
@@ -514,14 +515,14 @@ if c:
   gt(target).set_note(dataout[target])
  # Join everything together and display the map if we aren't displaying the help
  overlays = [f"*{overlay.strip('*')}" for overlay in overlays]
- if not any(args.get(arg) for arg in ('?', 'help', 'list')):
-  finalMap = f"""{map}{f"" if mapsize == "JSON" else f"{mapsize}/" if mapsize else ""}{f"{mapviewlocation}:{mapviewsize}/" if mapviewsize and mapviewlocation else ""}{f'_{"_".join(walls)}/' if walls else ""}{f"@{mapoptions}/"if mapoptions else"@/"}{f'{"/".join(objects)}/' if objects else ""}{f'{"*f"+"/*f".join(fow).replace(":", "")}/' if fow else ""}{'/'.join(people+overlays)}{f"?load={'&load='.join(loadedjson)}" if loadedjson else ""}?a=1&cid={ctx.channel.id}&sid={ctx.guild.id}&uid={ctx.author.id}{"&d=1" if testVersion else ""}{f"&bg={mapbg}" if mapbg else ""}"""
+ if not any(args.last(arg) for arg in ('?', 'help', 'list')):
+  finalMap = f"""{map}{f"" if mapsize == "JSON" else f"{mapsize}/" if mapsize else ""}{f"{mapviewlocation}:{mapviewsize}/" if mapviewsize and mapviewlocation else ""}{f'_{"_".join(walls)}/' if walls else ""}{f"@{mapoptions}/"if mapoptions else"@/"}{f'{"/".join(objects)}/' if objects else ""}{f'{"*f"+"/*f".join(fow).replace(":", "")}/' if fow else ""}{'/'.join(people+overlays)}/?a=2{f"?load={'&load='.join(loadedjson)}" if loadedjson else ""}{f"&bg={mapbg.split('?')[0]}" if mapbg else ""}"""
   return f"""{'' if args.last('silent') else f'-image "{finalMap}"'} -f "[Map]({finalMap})" """ + (f"""  -desc "{newline.join(desc)}"  """ if desc else "")
 </drac2>
 
 <drac2>
 # Are we trying to display the spelllist?
-if args.get('list'):
+if 'list' in argList:
  # Only grab the page selected, default to first
  if spellPagin:
   spellPage = f"""-desc "{newline.join(spellPagin[ min(len(spellPagin),args.last('page', 1, int)-1)] )}" """
@@ -532,7 +533,7 @@ if args.get('list'):
                         -f "Add your own overlays/spells | You can add your own overlays/spells by running the command `!map -save <spellname>:<overlay>`
                         See `!map help spell` for more info"  """
 # If we're not in combat, or "?" or "help" are given as arguments, display the help
-elif not c or args.get('?') or args.get('help'):
+elif not c or '?' in argList or 'help' in argList:
  help = f"""-title "Master. Master. Master of Spells, I'm pulling your overlays"
             -desc "__**Map Utility**__
             This is a utility to use with the `!map` alias. It allows you can quickly place preset spell effect overlays or ones that you have saved."
@@ -564,4 +565,3 @@ if args.last('list'):
 
 -footer "!se ? | {{paginFooter}} v1.2"
 -color <color>
-

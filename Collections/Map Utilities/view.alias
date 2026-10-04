@@ -4,7 +4,7 @@ testVersion = False
 argList = &ARGS&
 
 # Comment the first line for `!map`, second line for `!move`
-args = argparse((['-t',combat().me.name if combat().me else combat().current.name] if combat() and (combat().me or combat().current) else []) + ['-view']+argList if argList else [])
+args = argparse((['-t',combat().me.name if combat().me else combat().current.name] if combat() and (combat().me or combat().current) else []) + ['-view']+argList if argList else [], parse_ephem=False)
 # args = argparse(argList)
 
 # Set are base variables
@@ -23,7 +23,7 @@ mapview = ""
 mapviewsize = ""
 mapviewlocation = ""
 mapattach = ""
-map="http://otfbm.io/"
+map=get("otfbm_base_url", "http://otfbm.io/")
 walls = []
 objects = []
 loadedjson = []
@@ -270,7 +270,7 @@ if args.last('load'):
 <drac2>
 if c:
  # If theres a -mapsize, -bg, -options, -view, -attach, -view, -wall, -deletewall, -object, -deleteobject, -loadmap, -savebattle, -deletebattle, -loadbattle, -fow, or -addfow  - arg, process that and add/replace the effect
- if any(args.last(thisArg) for thisArg in ('mapview', 'view')) and not (args.last('help') or args.last('?')):
+ if any(args.last(thisArg) for thisArg in ('mapview', 'view')) and not (args.last('help') or '?' in argList):
   # If the new mapsize is different from the old one, update and display
   if mapview != args.last('mapview', args.last('view', mapview)):
    # Do they want to reset the map view?
@@ -376,7 +376,7 @@ if c:
   neweffect = f"""{f"Size: {mapsize}" if mapsize else ""}{f" ~ Background: {mapbg}" if mapbg else ""}{f" ~ Options: {mapoptions}" if mapoptions else ""}{f" ~ Walls: {', '.join(walls)}" if walls else""}{f' ~ Objects: {"/".join(objects)}' if objects else ""}{f" ~ View: {setMapView}" if setMapView.strip(':') else ''}{f' ~ FOW: {", ".join(fow)}' if fow else ""}{f' ~ JSON: {", ".join(loadedjson)}' if loadedjson else ""}""".strip(" ~")
   # If mapattach exists, apply the new effect, and display
   if mapattach:
-   mapattach.add_effect('map', f"""-attack "||{neweffect}" """)
+   mapattach.add_effect('map', attacks=[{"attack":{"name":"map","automation":[{"type":"text","text":neweffect}],"_v":2}}])
    desc.append(f"Map settings attached to `{mapattach.name}`")
   # Otherwise, show that it was changed, but not saved
   else:
@@ -384,7 +384,7 @@ if c:
    for maptarg in ("map", "dm", "lair"):
      if c.get_combatant(maptarg):
        mapattach = c.get_combatant(maptarg)
-       mapattach.add_effect('map', f"""-attack "||{neweffect}" """)
+       mapattach.add_effect('map', attacks=[{"attack":{"name":"map","automation":[{"type":"text","text":neweffect}],"_v":2}}])
        desc.append(f"""Autoattached map settings to {mapattach.name}""")
        break
    else:
@@ -425,6 +425,7 @@ if c:
   if len(tColor) in (3, 6):
    tColor = f"~{tColor}".upper()
   tName = target.translate(str.maketrans(' ', '_', nameStrip))
+  tName = tName.splitlines()[0]
   # Only display if they have a location
   if tLocation:
     people.append(f"{tLocation}{tSize}{tColor}-{tName}{f'~{tToken}' if tToken else ''}")
@@ -480,13 +481,13 @@ if c:
  # &cid={ctx.channel.id}&sid={ctx.guild.id}&uid={ctx.author.id}{"&d=1" if testVersion else ""}
 
  overlays = [f"*{overlay.strip('*')}" for overlay in overlays]
- if not any(args.get(arg) for arg in ('?', 'help', 'list')):
-  finalMap = f"""{map}{mapsize}{f"/{mapviewlocation}:{mapviewsize}" if mapviewsize and mapviewlocation else ""}/{f'_{"_".join(walls)}/' if walls else ""}{f"@{mapoptions}/"if mapoptions else""}{f'{"/".join(objects)}/' if objects else ""}{f'{"*f"+"/*f".join(fow).replace(":", "")}/' if fow else ""}{'/'.join(people+overlays)}{f"?load={'&load='.join(loadedjson)}" if loadedjson else ""}?a=1{f"&bg={mapbg}" if mapbg else ""}"""
+ if not any(args.get(arg) for arg in ('help', 'list')) or not '?' in argList:
+  finalMap = f"""{map}{mapsize}{f"/{mapviewlocation}:{mapviewsize}" if mapviewsize and mapviewlocation else ""}/{f'_{"_".join(walls)}/' if walls else ""}{f"@{mapoptions}/"if mapoptions else""}{f'{"/".join(objects)}/' if objects else ""}{f'{"*f"+"/*f".join(fow).replace(":", "")}/' if fow else ""}{'/'.join(people+overlays)}/?a=2{f"&load={'&load='.join(loadedjson)}" if loadedjson else ""}{f"&bg={mapbg.split('?')[0]}" if mapbg else ""}"""
   return f"""{'' if args.last('silent') else f'-image "{finalMap}"'} -f "[Map]({finalMap})" """ + (f"""  -desc "{newline.join(desc)}"  """ if desc else "")
 </drac2>
 
 <drac2>
-if not c or args.get('?') or args.get('help'):
+if not c or '?' in argList or args.get('help'):
  help =  """-title "The View Looks Amazing Up Here"
              -desc "**__Map Utility__**
             This is a utility to use with the `!map` alias. You can focus on a portion of a map as well as shift that view, expand it, or reduce it. You also have the option to save a view, so later on you can load it quickly."

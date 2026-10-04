@@ -23,7 +23,7 @@ for arg in argList:
 
 
 # Comment the first line for `!map`, second line for `!move`
-args = argparse(argOut)
+args = argparse(argOut, parse_ephem=False)
 # args = argparse(argList)
 
 # Set are base variables
@@ -42,7 +42,7 @@ mapview = ""
 mapviewsize = ""
 mapviewlocation = ""
 mapattach = ""
-map="http://otfbm.io/"
+map = get("otfbm_base_url", "http://otfbm.io/")
 walls = []
 objects = []
 loadedjson = []
@@ -262,6 +262,7 @@ if c:
   if len(tColor) in (3, 6):
    tColor = f"~{tColor}".upper()
   tName = target.translate(str.maketrans(' ', '_', nameStrip))
+  tName = tName.splitlines()[0]
   # Only display if they have a location
   if tLocation:
     people.append(f"{tLocation}{tSize}{tColor}-{tName}{f'~{tToken}' if tToken else ''}")
@@ -309,7 +310,7 @@ if c:
 # Join everything together and display the map if we aren't displaying the help
 overlays = [f"*{overlay.strip('*')}" for overlay in overlays]
 if not any(args.get(arg) for arg in ('?', 'help')):
- finalMap = f"""{map}{mapsize}{f"/{mapviewlocation}:{mapviewsize}" if mapviewsize and mapviewlocation else ""}/{f'_{"_".join(walls)}/' if walls else ""}{f"@{mapoptions}/"if mapoptions else""}{f'{"/".join(objects)}/' if objects else ""}{f'{"*f"+"/*f".join(fow).replace(":", "")}/' if fow else ""}{'/'.join(people+overlays)}{f"?load={'&load='.join(loadedjson)}" if loadedjson else ""}?a=1{f"&bg={mapbg}" if mapbg else ""}"""
+ finalMap = f"""{map}{mapsize}{f"/{mapviewlocation}:{mapviewsize}" if mapviewsize and mapviewlocation else ""}/{f'_{"_".join(walls)}/' if walls else ""}{f"@{mapoptions}/"if mapoptions else""}{f'{"/".join(objects)}/' if objects else ""}{f'{"*f"+"/*f".join(fow).replace(":", "")}/' if fow else ""}{'/'.join(people+overlays)}/?a=2{f"&load={'&load='.join(loadedjson)}" if loadedjson else ""}{f"&bg={mapbg.split('?')[0]}" if mapbg else ""}"""
  return f""" -title "**__Distance__**" {'' if args.last('silent') else f'-image "{finalMap}"'} -f "[Map]({finalMap})" """ + (f"""  -desc "{newline.join(desc)}"  """ if desc else "")
 </drac2>
 
